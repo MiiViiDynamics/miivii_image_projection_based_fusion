@@ -1,0 +1,59 @@
+<launch>
+  <arg name="data_path" default="$(env HOME)/autoware_data" description="packages data and artifacts directory path"/>
+  <arg name="input/rois_number" default="1"/>
+  <arg name="input/image0" default="/miivii_gmsl/image0"/>
+  <arg name="input/camera_info0" default="/miivii_gmsl/camera_info0"/>
+  <arg name="input/rois0" default="/perception/object_recognition/detection/rois0"/>
+  <arg name="input/pointcloud" default="/rslidar_points"/>
+  <arg name="rviz" default="true"/>
+  <arg name="use_decompress" default="false"/>
+
+  <arg name="camera_topic" default="/miivii_gmsl/image0"/>
+  <arg name="yolox_output/objects" default="/perception/object_recognition/detection/rois0"/>
+
+  <!-- load transform -->
+  <node pkg="tf2_ros" exec="static_transform_publisher" name="map2base_link" output="screen" args="0 0 0 0 0 0 map base_link"/>
+  <group>
+        <arg name="model_file" default="$(find-pkg-share miivii_image_projection_based_fusion)/config/urdf/sensors.xacro" description="path to the file of model settings (*.xacro)"/>
+        <arg name="config_dir" default="$(find-pkg-share miivii_image_projection_based_fusion)/config/calibration"/>
+        <node name="robot_state_publisher" pkg="robot_state_publisher" exec="robot_state_publisher">
+        <param name="robot_description" value="$(command 'xacro $(var model_file) config_dir:=$(var config_dir)' 'warn')"/>
+        </node>
+  </group>
+
+  <!-- load robosense lidar -->
+  <group>
+      <node pkg="rslidar_sdk" exec="rslidar_sdk_node" name="rslidar_sdk_node" output="screen" />
+  </group>
+
+  <!-- load camera -->
+  <group>
+      <group>
+        <include file="$(find-pkg-share miivii_gmsl_camera)/launch/single.launch" />
+      </group>
+
+      <group>
+        <include file="$(find-pkg-share tensorrt_yolox)/launch/yolox.launch.xml">
+          <arg name="input/image" value="$(var camera_topic)"/>
+          <arg name="output/objects" value="$(var yolox_output/objects)"/>
+          <arg name="data_path" value="$(var data_path)"/>
+          <arg name="use_decompress" value="$(var use_decompress)"/>
+        </include>
+      </group>
+  </group>
+
+  <group>
+    <include file="$(find-pkg-share miivii_image_projection_based_fusion)/launch/pointpainting_fusion.launch.xml" >
+        <arg name="input/rois_number" value="$(var input/rois_number)"/>
+        <arg name="input/image0" value="$(var input/image0)"/>
+        <arg name="input/camera_info0" value="$(var input/camera_info0)"/>
+        <arg name="input/rois0" value="$(var input/rois0)"/>
+        <arg name="input/pointcloud" value="$(var input/pointcloud)"/>
+        <arg name="data_path" value="$(var data_path)"/>
+    </include>
+  </group>
+
+  <!-- You can change the config file path -->
+  <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share miivii_image_projection_based_fusion)/config/rviz/miivii_fusion.rviz" if="$(var rviz)"/>
+
+</launch>

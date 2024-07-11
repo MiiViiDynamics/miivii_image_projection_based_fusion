@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <!-- Define a macro for the sensor kit -->
+  <xacro:macro name="sensor_kit_macro" params="parent x y z roll pitch yaw">
+
+    <xacro:arg name="config_dir" default="$(find miivii_image_projection_based_fusion)/config/calibration"/>
+
+    <!-- Define the sensor kit base link -->
+    <joint name="${parent}_sensor_kit_base_link_joint" type="fixed">
+      <origin rpy="${roll} ${pitch} ${yaw}" xyz="${x} ${y} ${z}"/>
+      <parent link="${parent}"/>
+      <child link="sensor_kit_base_link"/>
+    </joint>
+    <link name="sensor_kit_base_link">
+      <!-- The origin tag here is not necessary as the link's position is already defined by the joint -->
+    </link>
+
+    <!-- Load calibration data -->
+    <xacro:property name="calibration" value="${xacro.load_yaml('$(arg config_dir)/sensor_kit_calibration.yaml')}"/>
+
+    <!-- Include sensors based on the calibration data -->
+    <xacro:sensor_kit_macro_sensor name="rslidar" parent="sensor_kit_base_link"
+      x="${calibration['sensor_kit_base_link']['rslidar']['x']}"
+      y="${calibration['sensor_kit_base_link']['rslidar']['y']}"
+      z="${calibration['sensor_kit_base_link']['rslidar']['z']}"
+      roll="${calibration['sensor_kit_base_link']['rslidar']['roll']}"
+      pitch="${calibration['sensor_kit_base_link']['rslidar']['pitch']}"
+      yaw="${calibration['sensor_kit_base_link']['rslidar']['yaw']}"
+    />
+    <xacro:sensor_kit_macro_sensor name="camera0" parent="sensor_kit_base_link"
+      x="${calibration['sensor_kit_base_link']['camera0']['x']}"
+      y="${calibration['sensor_kit_base_link']['camera0']['y']}"
+      z="${calibration['sensor_kit_base_link']['camera0']['z']}"
+      roll="${calibration['sensor_kit_base_link']['camera0']['roll']}"
+      pitch="${calibration['sensor_kit_base_link']['camera0']['pitch']}"
+      yaw="${calibration['sensor_kit_base_link']['camera0']['yaw']}"
+    />
+  </xacro:macro>
+
+  <!-- Define a macro for a sensor -->
+  <xacro:macro name="sensor_kit_macro_sensor" params="name parent x y z roll pitch yaw">
+    <joint name="${parent}_${name}_joint" type="fixed">
+      <origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}"/>
+      <parent link="${parent}"/>
+      <child link="${name}"/>
+    </joint>
+    <link name="${name}">
+      <!-- Add sensor-specific elements here, e.g., visual and collision elements -->
+    </link>
+  </xacro:macro>
+
+</robot>

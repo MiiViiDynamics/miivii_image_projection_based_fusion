@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot name="vehicle" xmlns:xacro="http://ros.org/wiki/xacro">  
+  <link name="base_link">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </visual>
+  </link>
+
+  <!-- sensors -->
+  <xacro:include filename="$(find miivii_image_projection_based_fusion)/config/urdf/miivii_sensors.xacro"/>
+</robot>
