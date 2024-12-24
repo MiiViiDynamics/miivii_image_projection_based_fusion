@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <arg name="launch_driver" default="true" />
+    <arg name="interface" default="can0" />
+    <arg name="receiver_interval_sec" default="0.01" />
+
+    <arg name="input/frame" default="/from_can_bus" />
+    <arg name="output/objects" default="objects_raw" />
+    <arg name="output/scan" default="scan" />
+    <arg name="publish_radar_track" default="true" />
+    <arg name="publish_radar_scan" default="false" />
+    <arg name="output_frame" default="ars408" />
+    <arg name="sequential_publish" default="false" />
+    <arg name="size_x" default="1.8" />
+    <arg name="size_y" default="1.8" />
+
+    <!-- Start ASR 408-->
+    <group>
+      <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
+          <arg name="interface" value="$(var interface)" />
+          <arg name="interval_sec" value="$(var receiver_interval_sec)" />
+      </include>
+
+      <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
+          <arg name="input/frame" value="$(var input/frame)" />
+          <arg name="output/objects" value="$(var output/objects)" />
+          <arg name="output/scan" value="$(var output/scan)" />
+          <arg name="publish_radar_track" value="$(var publish_radar_track)" />
+          <arg name="publish_radar_scan" value="$(var publish_radar_scan)" />
+          <arg name="output_frame" value="$(var output_frame)" />
+          <arg name="sequential_publish" value="$(var sequential_publish)" />
+          <arg name="size_x" value="$(var size_x)" />
+          <arg name="size_y" value="$(var size_y)" />
+      </include>
+    </group>
+
+    <!-- Start hesai_ros_driver_node -->
+    <group>
+        <node name="hesai_ros_driver_node" pkg="hesai_ros_driver" exec="hesai_ros_driver_node" output="screen" />
+        <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share miivii_image_projection_based_fusion)/config/rviz/pandar40p.rviz"/>
+    </group>
+
+    <!-- Start Bynav X1-->
+    <arg name="nav_interface" default="192.168.8.151" />
+    <group>
+        <include file="$(find-pkg-share miivii_bynav_driver)/launch/miivii_bynavX1.launch" >
+          <arg name="interface" value="$(var nav_interface)" />
+        </include>
+    </group>
+
+    <!-- Start GMSL Camera-->
+    <group>
+      <node pkg="miivii_gmsl_camera" exec="miivii_gmsl_camera_node" name="miivii_gmsl_camera_node" output="screen"> 
+        <param name="sync_freq" value="30"/>
+        <param name="video0.active" value="true"/>
+        <param name="video0.camera_res" value="1920x1080"/>
+        <param name="video0.output_res" value="1920x1080"/>
+        <param name="video1.active" value="true"/>
+        <param name="video1.camera_res" value="1920x1080"/>
+        <param name="video1.output_res" value="1920x1080"/>
+        <param name="video2.active" value="true"/>
+        <param name="video2.camera_res" value="1920x1080"/>
+        <param name="video2.output_res" value="1920x1080"/>
+        <param name="video3.active" value="true"/>
+        <param name="video3.camera_res" value="1920x1080"/>
+        <param name="video3.output_res" value="1920x1080"/>
+        <param name="video4.active" value="true"/>
+        <param name="video4.camera_res" value="1920x1080"/>
+        <param name="video4.output_res" value="1920x1080"/>
+        <param name="video5.active" value="true"/>
+        <param name="video5.camera_res" value="1920x1080"/>
+        <param name="video5.output_res" value="1920x1080"/>
+      </node>        
+    </group>
+
+</launch>

@@ -6,6 +6,8 @@ add_compile_options(-Wno-unknown-pragmas -fopenmp)
 find_package(autoware_cmake REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(PCL REQUIRED)
+find_package(pcl_ros REQUIRED)
 autoware_package()
 
 find_package(OpenMP REQUIRED)
@@ -31,6 +33,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 target_link_libraries(${PROJECT_NAME}
   ${OpenCV_LIBRARIES}
   ${EIGEN3_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${pcl_ros_LIBRARIES}
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
@@ -115,6 +119,28 @@ else()
   set(CUDNN_AVAIL OFF)
 endif()
 
+
+#Repalce config.yaml and Rebuild hesai_ros_driver
+find_package(ament_cmake REQUIRED)
+find_package(hesai_ros_driver REQUIRED)
+
+set(SOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/config/pandar40p_config.yaml")
+set(DESTINATION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../hesai/HesaiLidar_ROS_2.0/config/config.yaml")
+if(EXISTS ${DESTINATION_FILE})
+    file(REMOVE ${DESTINATION_FILE})
+endif()
+file(COPY ${SOURCE_FILE} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/../../hesai/HesaiLidar_ROS_2.0/config/)
+file(RENAME ${CMAKE_CURRENT_SOURCE_DIR}/../../hesai/HesaiLidar_ROS_2.0/config/pandar40p_config.yaml ${DESTINATION_FILE})
+
+get_filename_component(COLCON_BUILD_DIR "${CMAKE_BINARY_DIR}/.." ABSOLUTE)
+
+add_custom_target(rebuild_hesai_ros_driver ALL
+  WORKING_DIRECTORY ${COLCON_BUILD_DIR}/hesai_ros_driver/
+  COMMAND ${CMAKE_COMMAND} -E env "MAKEFLAGS=+${MAKEFLAGS}" make -j$(nproc)
+  COMMENT "Rebuilding hesai_ros_driver"
+)
+add_dependencies(${PROJECT_NAME} rebuild_hesai_ros_driver)
+
 if(TRT_AVAIL AND CUDA_AVAIL AND CUDNN_AVAIL)
 
   find_package(OpenCV REQUIRED)
@@ -154,8 +180,33 @@ if(TRT_AVAIL AND CUDA_AVAIL AND CUDNN_AVAIL)
     EXECUTABLE pointpainting_fusion_node
   )
 
+  ament_auto_add_library(projectpoints_lib SHARED
+    src/projection_fusion/projection_node.cpp
+  )
+
+  cuda_add_library(projectpoints_cuda_lib SHARED
+    src/projection_fusion/projection_kernel.cu
+  )
+
+  target_link_libraries(projectpoints_lib
+    ${OpenCV_LIBRARIES}
+    ${EIGEN3_LIBRARIES}
+    ${PCL_LIBRARIES}
+    ${NVINFER}
+    ${CUDA_LIBRARIES}
+    ${CUBLAS_LIBRARIES}
+    ${CUDA_curand_LIBRARY}
+    ${CUDNN_LIBRARY}
+    projectpoints_cuda_lib
+  )
+
+  rclcpp_components_register_node(projectpoints_lib
+    PLUGIN "miivii_image_projection_based_fusion::ProjectPointsToImageNode"
+    EXECUTABLE project_points_to_image_node
+  )
+
   install(
-    TARGETS pointpainting_cuda_lib
+    TARGETS pointpainting_cuda_lib projectpoints_cuda_lib
     DESTINATION lib
   )
 else()
@@ -166,3 +217,6 @@ ament_auto_package(INSTALL_TO_SHARE
     launch
     config
 )
+
+
+

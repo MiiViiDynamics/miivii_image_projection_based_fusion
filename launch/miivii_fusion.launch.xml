@@ -4,13 +4,11 @@
   <arg name="input/image0" default="/miivii_gmsl/image0"/>
   <arg name="input/camera_info0" default="/miivii_gmsl/camera_info0"/>
   <arg name="input/rois0" default="/perception/object_recognition/detection/rois0"/>
-  <arg name="input/pointcloud" default="/rslidar_points"/>
+  <arg name="input/pointcloud" default="/lidar_points"/>
   <arg name="rviz" default="true"/>
   <arg name="use_decompress" default="false"/>
-
   <arg name="camera_topic" default="/miivii_gmsl/image0"/>
   <arg name="yolox_output/objects" default="/perception/object_recognition/detection/rois0"/>
-
   <!-- load transform -->
   <node pkg="tf2_ros" exec="static_transform_publisher" name="map2base_link" output="screen" args="0 0 0 0 0 0 map base_link"/>
   <group>
@@ -21,17 +19,21 @@
         </node>
   </group>
 
-  <!-- load robosense lidar -->
+  <!-- load hesai lidar -->
   <group>
-      <node pkg="rslidar_sdk" exec="rslidar_sdk_node" name="rslidar_sdk_node" output="screen" />
+      <node name="hesai_ros_driver_node" pkg="hesai_ros_driver" exec="hesai_ros_driver_node" output="screen" />
   </group>
 
   <!-- load camera -->
   <group>
       <group>
-        <include file="$(find-pkg-share miivii_gmsl_camera)/launch/single.launch" />
+        <node pkg="miivii_gmsl_camera" exec="miivii_gmsl_camera_node" name="miivii_gmsl_camera_node" output="screen">  
+          <param name="sync_freq" value="30"/>
+          <param name="video0.active" value="true"/>
+          <param name="video0.camera_res" value="1920x1080"/>
+          <param name="video0.output_res" value="1920x1080"/>
+        </node>        
       </group>
-
       <group>
         <include file="$(find-pkg-share tensorrt_yolox)/launch/yolox.launch.xml">
           <arg name="input/image" value="$(var camera_topic)"/>
@@ -42,6 +44,7 @@
       </group>
   </group>
 
+  <!-- load image based fusion-->
   <group>
     <include file="$(find-pkg-share miivii_image_projection_based_fusion)/launch/pointpainting_fusion.launch.xml" >
         <arg name="input/rois_number" value="$(var input/rois_number)"/>
@@ -52,8 +55,6 @@
         <arg name="data_path" value="$(var data_path)"/>
     </include>
   </group>
-
   <!-- You can change the config file path -->
   <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share miivii_image_projection_based_fusion)/config/rviz/miivii_fusion.rviz" if="$(var rviz)"/>
-
 </launch>
